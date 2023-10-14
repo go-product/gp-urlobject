@@ -1,34 +1,28 @@
-# -*- coding: utf-8 -*-
-
 import posixpath
-import urllib
-
-from .compat import urlparse
-from .six import text_type, u
+from urllib import parse
 
 
-class Root(object):
+class Root:
 
     """A descriptor which always returns the root path."""
 
     def __get__(self, instance, cls):
-        return cls('/')
+        return cls("/")
 
 
-class URLPath(text_type):
-
+class URLPath(str):
     root = Root()
 
     def __repr__(self):
-        return u('URLPath(%r)') % (text_type(self),)
+        return "URLPath(%r)" % (str(self),)
 
     @classmethod
     def join_segments(cls, segments, absolute=True):
         """Create a :class:`URLPath` from an iterable of segments."""
         if absolute:
-            path = cls('/')
+            path = cls("/")
         else:
-            path = cls('')
+            path = cls("")
         for segment in segments:
             path = path.add_segment(segment)
         return path
@@ -47,8 +41,8 @@ class URLPath(text_type):
             >>> URLPath('/a%20b/c%20d/').segments
             ('a b', 'c d', '')
         """
-        segments = tuple(map(path_decode, self.split('/')))
-        if segments[0] == '':
+        segments = tuple(map(path_decode, self.split("/")))
+        if segments[0] == "":
             return segments[1:]
         return segments
 
@@ -63,8 +57,8 @@ class URLPath(text_type):
             URLPath('/foo/')
         """
         if self.is_leaf:
-            return self.relative('.')
-        return self.relative('..')
+            return self.relative(".")
+        return self.relative("..")
 
     @property
     def is_leaf(self):
@@ -76,7 +70,7 @@ class URLPath(text_type):
             >>> URLPath('/a/b/').is_leaf
             False
         """
-        return self and self.segments[-1] != '' or False
+        return self and self.segments[-1] != "" or False
 
     @property
     def is_relative(self):
@@ -88,7 +82,7 @@ class URLPath(text_type):
             >>> URLPath('/a/b/c').is_relative
             False
         """
-        return self[0] != '/'
+        return self[0] != "/"
 
     @property
     def is_absolute(self):
@@ -100,7 +94,7 @@ class URLPath(text_type):
             >>> URLPath('/a/b/c').is_absolute
             True
         """
-        return self[0] == '/'
+        return self[0] == "/"
 
     def relative(self, rel_path):
         """
@@ -113,7 +107,7 @@ class URLPath(text_type):
             >>> URLPath('/a/b/c').relative('../d')
             URLPath('/a/d')
         """
-        return type(self)(urlparse.urljoin(self, rel_path))
+        return type(self)(parse.urljoin(self, rel_path))
 
     def add_segment(self, segment):
         """
@@ -140,46 +134,18 @@ class URLPath(text_type):
             >>> URLPath('/a/b/').add('dé/f/g')
             URLPath('/a/b/d%C3%A9/f/g')
         """
-        return type(self)(posixpath.join(self, path_encode(path, safe='/')))
+        return type(self)(posixpath.join(self, path_encode(path, safe="/")))
 
 
-def _path_encode_py2(s, safe=''):
-    """Quote unicode or str using path rules."""
-    if isinstance(s, unicode):
-        s = s.encode('utf-8')
-    if isinstance(safe, unicode):
-        safe = safe.encode('utf-8')
-    return urllib.quote(s, safe=safe).decode('utf-8')
-
-
-def _path_encode_py3(s, safe=''):
+def path_encode(s, safe=""):
     """Quote str or bytes using path rules."""
     # s can be bytes or unicode, urllib.parse.quote() assumes
     # utf-8 if encoding is necessary.
-    return urlparse.quote(s, safe=safe)
+    return parse.quote(s, safe=safe)
 
 
-def _path_decode_py2(s):
-    """Unquote unicode or str using path rules."""
-    if isinstance(s, unicode):
-        s = s.encode('utf-8')
-    return urllib.unquote(s).decode('utf-8')
-
-
-def _path_decode_py3(s):
+def path_decode(s):
     """Unquote str or bytes using path rules."""
     if isinstance(s, bytes):
-        s = s.decode('utf-8')
-    return urlparse.unquote(s)
-
-
-if hasattr(urllib, 'quote'):
-    path_encode = _path_encode_py2
-    path_decode = _path_decode_py2
-    del _path_encode_py3
-    del _path_decode_py3
-else:
-    path_encode = _path_encode_py3
-    path_decode = _path_decode_py3
-    del _path_encode_py2
-    del _path_decode_py2
+        s = s.decode("utf-8")
+    return parse.unquote(s)

@@ -1,11 +1,12 @@
-from .compat import urlparse
+from urllib import parse
+
 from .netloc import Netloc
-from .path import URLPath, path_encode, path_decode
+from .path import URLPath, path_decode, path_encode
 from .ports import DEFAULT_PORTS
 from .query_string import QueryString
-from .six import text_type, u
 
-class URLObject(text_type):
+
+class URLObject(str):
 
     """
     A URL.
@@ -33,7 +34,7 @@ class URLObject(text_type):
     """
 
     def __repr__(self):
-        return u('URLObject(%r)') % (text_type(self),)
+        return "URLObject(%r)" % (str(self),)
 
     @classmethod
     def from_iri(cls, iri):
@@ -54,22 +55,23 @@ class URLObject(text_type):
         The % character is *not* quoted, because users often copy/paste
         addresses that are already quoted, and we should not double-quote it.
 
-        >>> print(URLObject.from_iri(u('https://\xe9xample.com/p\xe5th')))
+        >>> print(URLObject.from_iri('https://\xe9xample.com/p\xe5th'))
         https://xn--xample-9ua.com/p%C3%A5th
         """
         # This code approximates Section 3.1 of RFC 3987, using the option of
         # encoding the netloc with IDNA.
-        split = urlparse.urlsplit(iri)
-        netloc = split.netloc.encode('idna').decode('ascii')
-        path = path_encode(split.path.encode('utf-8'), safe='/%;')
-        query = path_encode(split.query.encode('utf-8'), safe='=&%')
-        fragment = path_encode(split.fragment.encode('utf-8'), safe='%')
-        new_components = split._replace(netloc=netloc,
-                                        path=path,
-                                        query=query,
-                                        fragment=fragment,
-                                        )
-        return cls(urlparse.urlunsplit(new_components))
+        split = parse.urlsplit(iri)
+        netloc = split.netloc.encode("idna").decode("ascii")
+        path = path_encode(split.path.encode("utf-8"), safe="/%;")
+        query = path_encode(split.query.encode("utf-8"), safe="=&%")
+        fragment = path_encode(split.fragment.encode("utf-8"), safe="%")
+        new_components = split._replace(
+            netloc=netloc,
+            path=path,
+            query=query,
+            fragment=fragment,
+        )
+        return cls(parse.urlunsplit(new_components))
 
     @property
     def scheme(self):
@@ -79,7 +81,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com").scheme)
         http
         """
-        return urlparse.urlsplit(self).scheme
+        return parse.urlsplit(self).scheme
 
     def with_scheme(self, scheme):
         """
@@ -103,7 +105,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://user:pass@www.google.com").netloc)
         user:pass@www.google.com
         """
-        return Netloc(urlparse.urlsplit(self).netloc)
+        return Netloc(parse.urlsplit(self).netloc)
 
     def with_netloc(self, netloc):
         """
@@ -281,7 +283,7 @@ class URLObject(text_type):
         >>> URLObject("http://www.google.com:126").default_port
         126
         """
-        port = urlparse.urlsplit(self).port
+        port = parse.urlsplit(self).port
         if port is not None:
             return port
         return DEFAULT_PORTS.get(self.scheme)
@@ -296,7 +298,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com").path)
         <BLANKLINE>
         """
-        return URLPath(urlparse.urlsplit(self).path)
+        return URLPath(parse.urlsplit(self).path)
 
     def with_path(self, path):
         """
@@ -317,7 +319,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com/a/b/c").root)
         http://www.google.com/
         """
-        return self.with_path('/')
+        return self.with_path("/")
 
     @property
     def parent(self):
@@ -373,7 +375,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com?a=b").query)
         a=b
         """
-        return QueryString(urlparse.urlsplit(self).query)
+        return QueryString(parse.urlsplit(self).query)
 
     def with_query(self, query):
         """
@@ -391,7 +393,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com?a=b&c=d").without_query())
         http://www.google.com
         """
-        return self.__replace(query='')
+        return self.__replace(query="")
 
     @property
     def query_list(self):
@@ -414,9 +416,9 @@ class URLObject(text_type):
         Each name will have only its last value associated with it. For all the
         values for a given key, see :attr:`.query_multi_dict`.
 
-        >>> dictsort(URLObject("http://www.google.com?a=b&c=d").query_dict)
+        >>> dict(sorted(URLObject("http://www.google.com?a=b&c=d").query_dict.items(), key=lambda x: x[0]))
         {'a': 'b', 'c': 'd'}
-        >>> dictsort(URLObject("http://www.google.com?a=b&a=c").query_dict)
+        >>> dict(sorted(URLObject("http://www.google.com?a=b&a=c").query_dict.items(), key=lambda x: x[0]))
         {'a': 'c'}
         """
         return self.query.dict
@@ -429,9 +431,9 @@ class URLObject(text_type):
         All values associated with a given name will be represented, in order,
         in that name's list.
 
-        >>> dictsort(URLObject("http://www.google.com?a=b&c=d").query_multi_dict)
+        >>> dict(sorted(URLObject("http://www.google.com?a=b&c=d").query_multi_dict.items(), key=lambda x: x[0]))
         {'a': ['b'], 'c': ['d']}
-        >>> dictsort(URLObject("http://www.google.com?a=b&a=c").query_multi_dict)
+        >>> dict(sorted(URLObject("http://www.google.com?a=b&a=c").query_multi_dict.items(), key=lambda x: x[0]))
         {'a': ['b', 'c']}
         """
         return self.query.multi_dict
@@ -522,7 +524,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com/a/b/c#fragment").fragment)
         fragment
         """
-        return path_decode(urlparse.urlsplit(self).fragment)
+        return path_decode(parse.urlsplit(self).fragment)
 
     def with_fragment(self, fragment):
         """
@@ -540,7 +542,7 @@ class URLObject(text_type):
         >>> print(URLObject("http://www.google.com/a/b/c#fragment").without_fragment())
         http://www.google.com/a/b/c
         """
-        return self.__replace(fragment='')
+        return self.__replace(fragment="")
 
     def relative(self, other):
         """
@@ -562,19 +564,28 @@ class URLObject(text_type):
         elif other.netloc:
             return other.with_scheme(self.scheme)
         elif other.path:
-            return other.with_scheme(self.scheme).with_netloc(self.netloc) \
-                    .with_path(self.path.relative(other.path))
+            return (
+                other.with_scheme(self.scheme)
+                .with_netloc(self.netloc)
+                .with_path(self.path.relative(other.path))
+            )
         elif other.query:
-            return other.with_scheme(self.scheme).with_netloc(self.netloc) \
-                    .with_path(self.path)
+            return (
+                other.with_scheme(self.scheme)
+                .with_netloc(self.netloc)
+                .with_path(self.path)
+            )
         elif other.fragment:
-            return other.with_scheme(self.scheme).with_netloc(self.netloc) \
-                    .with_path(self.path).with_query(self.query)
+            return (
+                other.with_scheme(self.scheme)
+                .with_netloc(self.netloc)
+                .with_path(self.path)
+                .with_query(self.query)
+            )
         # Empty string just removes fragment; it's treated as a path meaning
         # 'the current location'.
         return self.without_fragment()
 
     def __replace(self, **replace):
         """Replace a field in the ``urlparse.SplitResult`` for this URL."""
-        return type(self)(urlparse.urlunsplit(
-            urlparse.urlsplit(self)._replace(**replace)))
+        return type(self)(parse.urlunsplit(parse.urlsplit(self)._replace(**replace)))

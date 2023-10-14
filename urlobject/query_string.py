@@ -1,15 +1,11 @@
 import collections
 import re
-import urllib
-
-from .compat import urlparse
-from .six import PY2, text_type, string_types, u
+from urllib import parse
 
 
-class QueryString(text_type):
-
+class QueryString(str):
     def __repr__(self):
-        return u('QueryString(%r)') % (text_type(self),)
+        return "QueryString(%r)" % (str(self),)
 
     @property
     def list(self):
@@ -18,10 +14,10 @@ class QueryString(text_type):
             # Empty string => empty list.
             return result
 
-        name_value_pairs = re.split(r'[\&\;]', self)
+        name_value_pairs = re.split(r"[&;]", self)
         for name_value_pair in name_value_pairs:
             # Split the pair string into a naive, encoded (name, value) pair.
-            name_value = name_value_pair.split('=', 1)
+            name_value = name_value_pair.split("=", 1)
             # 'param' => ('param', None)
             if len(name_value) == 1:
                 name, value = name_value + [None]
@@ -51,13 +47,15 @@ class QueryString(text_type):
     def add_param(self, name, value):
         if value is None:
             parameter = qs_encode(name)
-        elif not isinstance(value, string_types) and hasattr(value, '__iter__'):
+        elif not isinstance(value, str) and hasattr(value, "__iter__"):
             # value is a list or tuple
-            parameter = '&'.join([qs_encode(name) + '=' + qs_encode(val) for val in value])
+            parameter = "&".join(
+                [qs_encode(name) + "=" + qs_encode(val) for val in value]
+            )
         else:
-            parameter = qs_encode(name) + '=' + qs_encode(value)
+            parameter = qs_encode(name) + "=" + qs_encode(value)
         if self:
-            return type(self)(self + '&' + parameter)
+            return type(self)(self + "&" + parameter)
         return type(self)(parameter)
 
     def add_params(self, *args, **kwargs):
@@ -69,7 +67,7 @@ class QueryString(text_type):
 
     def del_param(self, name):
         params = [(n, v) for n, v in self.list if n != name]
-        qs = type(self)('')
+        qs = type(self)("")
         for param in params:
             qs = qs.add_param(*param)
         return qs
@@ -86,16 +84,15 @@ class QueryString(text_type):
 
     def del_params(self, params):
         deleted = set(params)
-        params = [(name, value) for name, value in self.list
-                  if name not in deleted]
-        qs = type(self)('')
+        params = [(name, value) for name, value in self.list if name not in deleted]
+        qs = type(self)("")
         for param in params:
             qs = qs.add_param(*param)
         return qs
 
     def del_param_value(self, name, value):
         params = [(n, v) for n, v in self.list if n != name or v != value]
-        qs = type(self)('')
+        qs = type(self)("")
         for param in params:
             qs = qs.add_param(*param)
         return qs
@@ -108,7 +105,7 @@ def get_params_list(*args, **kwargs):
         if len(args) > 1:
             raise TypeError("Expected at most 1 arguments, got 2")
         arg = args[0]
-        if hasattr(arg, 'items'):
+        if hasattr(arg, "items"):
             params.extend(arg.items())
         else:
             params.extend(list(arg))
@@ -117,48 +114,18 @@ def get_params_list(*args, **kwargs):
     return params
 
 
-def _qs_encode_py2(s):
-    """Quote unicode or str using query string rules."""
-    if isinstance(s, (int, long)):
-        # Ease calling with int values which can be trivially stringified.
-        s = unicode(s)
-    if isinstance(s, unicode):
-        # urllib.quote_plus() requires str not unicode.
-        s = s.encode('utf-8')
-    return urllib.quote_plus(s).decode('utf-8')
-
-
-def _qs_encode_py3(s):
+def qs_encode(s):
     """Quote str or bytes using query string rules."""
     if isinstance(s, int):
         # Ease calling with int values which can be trivially stringified.
         s = str(s)
     # s can be bytes or unicode, urllib.parse.quote() assumes
     # utf-8 if encoding is necessary.
-    return urlparse.quote_plus(s)
+    return parse.quote_plus(s)
 
 
-def _qs_decode_py2(s):
-    """Unquote unicode or str using query string rules."""
-    if isinstance(s, unicode):
-        s = s.encode('utf-8')
-    return urllib.unquote_plus(s).decode('utf-8')
-
-
-def _qs_decode_py3(s):
+def qs_decode(s):
     """Unquote str or bytes using query string rules."""
     if isinstance(s, bytes):
-        s = s.decode('utf-8')
-    return urlparse.unquote_plus(s)
-
-
-if PY2:
-    qs_encode = _qs_encode_py2
-    qs_decode = _qs_decode_py2
-    del _qs_encode_py3
-    del _qs_decode_py3
-else:
-    qs_encode = _qs_encode_py3
-    qs_decode = _qs_decode_py3
-    del _qs_encode_py2
-    del _qs_decode_py2
+        s = s.decode("utf-8")
+    return parse.unquote_plus(s)
